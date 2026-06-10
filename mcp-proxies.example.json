@@ -1,0 +1,8 @@
+[
+  {
+    "id": "my-mcp",
+    "listen": "127.0.0.1:8788",
+    "target": "https://your-host.your-tailnet.ts.net/mcp",
+    "authEnv": "MY_MCP_TOKEN"
+  }
+]

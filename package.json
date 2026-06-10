@@ -11,7 +11,8 @@
     "dev:shell": "docker compose exec openclaw bash"
   },
   "dependencies": {
-    "@chrysb/alphaclaw": "0.9.18"
+    "@chrysb/alphaclaw": "0.9.18",
+    "socks-proxy-agent": "^8.0.5"
   },
   "engines": {
     "node": ">=22.14.0"

@@ -32,4 +32,60 @@ if [ -n "${TAILSCALE_AUTHKEY:-}" ]; then
   tailscale --socket=/var/run/tailscale/tailscaled.sock up ${tailscale_args}
 fi
 
+wait_for_port() {
+  host="$1"
+  port="$2"
+  attempts="${3:-60}"
+
+  attempt=0
+  while [ "$attempt" -lt "$attempts" ]; do
+    if node -e "
+      const net = require('net');
+      const socket = net.connect(${port}, '${host}', () => {
+        socket.end();
+        process.exit(0);
+      });
+      socket.on('error', () => process.exit(1));
+    " 2>/dev/null; then
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    sleep 0.5
+  done
+  return 1
+}
+
+parse_socks_host_port() {
+  raw="${1:-:1055}"
+  case "${raw}" in
+    :*)
+      echo "127.0.0.1 ${raw#:}"
+      ;;
+    *:*)
+      host="${raw%%:*}"
+      port="${raw##*:}"
+      echo "${host:-127.0.0.1} ${port}"
+      ;;
+    *)
+      echo "127.0.0.1 ${raw}"
+      ;;
+  esac
+}
+
+if [ -n "${socks5_server}" ]; then
+  set -- $(parse_socks_host_port "${socks5_server}")
+  socks_host="$1"
+  socks_port="$2"
+
+  if wait_for_port "${socks_host}" "${socks_port}"; then
+    echo "docker-entrypoint: Tailscale SOCKS5 ready on ${socks_host}:${socks_port}"
+  else
+    echo "docker-entrypoint: warning: Tailscale SOCKS5 not listening on ${socks_host}:${socks_port}" >&2
+  fi
+
+  if [ -n "${MCP_PROXIES:-}" ] || [ -f /data/.openclaw/mcp-proxies.json ]; then
+    NODE_PATH=/app/node_modules node /usr/local/lib/openclaw/start-mcp-proxies.mjs
+  fi
+fi
+
 exec "$@"
